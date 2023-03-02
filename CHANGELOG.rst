@@ -6,8 +6,8 @@ All notable changes will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
-[unreleased]
-============
+[0.1.0-alpha] - 2023-03-01
+==========================
 Initial release of libzet.
 
 I made this library because 2 of my other applications were doing basically
@@ -22,7 +22,6 @@ Added
 - The main Zettel class. It can load a zettel from markdown or RST documents.
   Each must have a title, and then headings below that followed by a section
   for attributes.
-- parse_date routines for plain english text parsing.
 - A function for filtering lists of zettels based on metaprogramming filter
   strings that adhere to python3 syntax.
 - It should also be safe to compare against asymmetrical zettels; that is to
