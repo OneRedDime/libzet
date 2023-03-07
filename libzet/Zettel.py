@@ -12,6 +12,28 @@ rst_sep = '.. end-zettel'
 md_sep = '<!--- end-zettel --->'
 
 
+class SkipZettel(Exception):
+    """ Custom functions should raise this to skip processing a Zettel.
+    """
+    pass
+
+
+def readdir_(d):
+    """ Same as OS. walk executed at the first level.
+
+    Returns:
+        A 3-tuple. First entry is the root (d), second is a list of all
+        directory entries within d, and the third is a list of names of
+        regular files.
+    """
+    d = d.rstrip(os.path.sep)
+    if not os.path.isdir(d):
+        raise ValueError('"{}" is not a directory.'.format(d))
+
+    for root, dirs, files in os.walk(d):
+        return root, dirs, files
+
+
 # Find heading points.
 def _is_rst_heading(s):
     s = s.strip()
@@ -124,6 +146,111 @@ def zettels_to_str(zettels, zettel_format, headings=None):
     return text
 
 
+def load_zettel(path, zettel_format, fun=lambda z: None):
+    """ Load a single Zettel from the filesystem.
+
+    The zettel will gain a new _loadpath attribute. Useful to
+    know where to write it back.
+
+    Args:
+        path: Path to zettel.
+        zettel_format: rst or md.
+        fun: Call this function on the zettel as it's loaded from disk.
+
+    Returns:
+        A reference to the newly loaded zettel.
+    """
+    with open(path) as f:
+        z = str_to_zettels(f.read(), zettel_format)[0]
+
+    # Guarantee _loadpath
+    z.attrs['_loadpath'] = path
+    fun(z)
+    z.attrs['_loadpath'] = path
+    return z
+
+
+def load_zettels(paths, zettel_format, recurse=False, fun=lambda z: None):
+    """ Load Zettels from the filesystem.
+
+    Zettels will be updated with a _loadpath value in their attrs.
+    This value is useful while zettels are being manipulated in a
+    program because it is guaranteed to be unique (at least within
+    that program).
+
+    If this list is sent to save_zettels then the _loadpath will
+    not be written.
+
+    Args:
+        paths: List of directories and exact paths to zettels.
+        zettel_format: md or rst
+        recurse: True to recurse into subdirs, False otherwise.
+        fun: Call this function on each zettel as it's loaded from disk.
+            If the zettel should be skipped then have this function
+            raise SkipZettel.
+
+    Returns:
+        A list of zettels.
+
+        This list may be passed to save_zettels to write
+        them to the filesystem.
+    """
+    zettels = []
+
+    if type(paths) is not list:
+        paths = [paths]
+
+    for path in paths:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f'{path} does not exist.')
+
+        if os.path.isdir(path):
+            root, dir_, files = readdir_(path)
+
+            files = [f'{root}/{f}' for f in files if f.endswith(f'.{zettel_format}')]
+
+            for f in files:
+                try:
+                    zettels.append(load_zettel(f, zettel_format, fun))
+                except SkipZettel:
+                    pass
+
+            if recurse:
+                for d in dir_:
+                    zettels.extend(load_zettels(f'{root}/{d}', zettel_format, recurse, fun))
+
+        elif os.path.isfile(path):
+            try:
+                zettels.append(load_zettel(path, zettel_format, fun))
+            except SkipZettel:
+                pass
+
+        else:
+            raise ValueError(f'{path} is not a regular file or directory.')
+
+    return zettels
+
+
+def save_zettels(zettels, zettel_format, fun=lambda z: None):
+    """ Save zettels back to disk.
+
+    The zettels are expected to have a _loadpath key in their attrs.
+    Probably best to send the output from load_zettels to this function.
+
+    Args:
+        zettels: List of zettels.
+        zettel_format: md or rst.
+        fun: A callable that accepts a zettel reference. This will be called
+            on each zettel before it's written back to disk.
+    """
+    for z in zettels:
+        loadpath = z.attrs['_loadpath']
+        fun(z)
+        del(z.attrs['_loadpath'])
+        with open(loadpath, 'w') as f:
+            f.write(zettels_to_str([z], zettel_format))
+
+
 def parse_rrule(rrule):
     """ Parse an icalendar rrule str into a dict.
 
@@ -162,7 +289,7 @@ def filtered_zettels(zettels, filter='', letter='z'):
 
     Args:
         zettels: A list of zettels to filter on.
-        filter: String to filter on. t is the zettel reference for each t
+        filter: String to filter on. z is the zettel reference for each z
             in zettels. This filter must follow python3 conditional syntax.
         letter: What letter should be used to point to a zettel in the under-
             the-hood python3 list comprehension. Default is 'z'.
@@ -181,7 +308,7 @@ def filtered_zettels(zettels, filter='', letter='z'):
 class Zettel:
     """ Represents a zettel.
     """
-    def __init__(self, title, headings, attributes=None, **kwargs):
+    def __init__(self, title, headings=None, attrs=None, **kwargs):
         """ Init a new Zettel.
 
         Args:
@@ -189,22 +316,23 @@ class Zettel:
             headings: Dictionary of subheadings. Each heading is paired with
                 a string for its zettel.
 
-            attributes: Metadata about the zettel.
+            attrs: Metadata about the zettel.
 
                 Attributes may also be provided to the constructor via
-                keyword arguments. Tasks may have additional attributes.
+                keyword arguments. Tasks may have additional attrs.
 
         Raises:
             ValueError if some attribute keys were invalid.
         """
-        attributes = attributes or dict()
+        headings = headings or dict()
+        attrs = attrs or dict()
 
         self.title = title
         self.headings = {k: v for k, v in headings.items()}
 
-        # Process attributes
+        # Process attrs
         self.attrs = Attributes()
-        self.attrs.update(attributes)
+        self.attrs.update(attrs)
         self.attrs.update(kwargs)
 
     def asIcsEvent(self, uid):
@@ -232,7 +360,7 @@ class Zettel:
         if not any([x in self.attrs and self.attrs[x] for x in exp]):
             return None
 
-        desc = self.headings['notes'] if 'notes' in self.headings else ''
+        desc = self.headings['_notes'] if '_notes' in self.headings else ''
 
         event = Event()
         event.add('uid', uid)
@@ -266,15 +394,6 @@ class Zettel:
         return event
 
     @classmethod
-    def createBlankZettel(cls, title):
-        """ Create a blank zettel. Still needs a title.
-
-        Args:
-        title: Title of the zettel.
-        """
-        return Zettel(title, dict(), dict())
-
-    @classmethod
     def createFromMd(cls, md):
         """ Create a new Zettel from markdown text.
 
@@ -282,7 +401,7 @@ class Zettel:
         is the heading and the value is the subsequent text.
 
         The title of the zettel is expected to be a markdown level-1 heading
-        (# ) This is followed by the zettel's notes, which is then
+        (# ) This is followed by the zettel's _notes, which is then
         succeeded by the rest of the zettel's headings, which are expected
         to be RST level 2 headings (## ).
 
@@ -328,12 +447,8 @@ class Zettel:
 
         title = ' '.join(md[heading_pts[0]].split()[1:])
 
-        # Gather notes
-        headings['notes'] = '\n'.join(md[1:heading_pts[1]])
-
-        # ... and delete the "notes" zettel if no notes were entered.
-        if not headings['notes'].strip():
-            del(headings['notes'])
+        # Gather _notes
+        headings['_notes'] = '\n'.join(md[1:heading_pts[1]])
 
         # Get the rest
         for ptr in range(1, len(heading_pts) - 1):
@@ -364,7 +479,7 @@ class Zettel:
             My other heading description
 
             .. attributes
-            creator: OneRedDime 
+            creator: OneRedDime
             assignee: OneRedDime
             creation_date: 03/01/2023
 
@@ -415,12 +530,8 @@ class Zettel:
 
         title = rst[heading_pts[0]].strip()
 
-        # Gather notes
-        headings['notes'] = '\n'.join(rst[heading_pts[0] + 2:heading_pts[1]])
-
-        # ... and delete the "notes" heading if no notes were entered.
-        if not headings['notes'].strip():
-            del(headings['notes'])
+        # Gather _notes
+        headings['_notes'] = '\n'.join(rst[heading_pts[0] + 2:heading_pts[1]])
 
         # Get the rest
         for ptr in range(1, len(heading_pts) - 1):
@@ -463,7 +574,7 @@ class Zettel:
 
         # Update this zettel.
         self.title = new_zettel.title
-        self.attrs = new_zettel.attributes.copy()
+        self.attrs = new_zettel.attrs.copy()
 
         if not exp_headings:
             self.headings = new_zettel.headings
@@ -476,18 +587,15 @@ class Zettel:
 
         self.refresh()
 
-    def getMd(self, headings=None, force=False):
+    def getMd(self, headings=None):
         """ Display this zettel in MD format.
 
         Args:
             headings: Only display these headings.
-            force: Display even there would be no meaningful text.
 
         Returns:
             A markdown string representing the content of this zettel.
         """
-        display = False
-
         headings = headings or []
         headings = headings or self.headings
         headings = [x.lower() for x in headings]
@@ -495,24 +603,18 @@ class Zettel:
         s = []
         s.append('# ' + self.title)
 
-        if 'notes' in headings:
-            display = True
-            s.append(self.headings['notes'].rstrip())
+        if '_notes' in headings:
+            s.append(self.headings['_notes'].rstrip())
             s.append('')
 
         # case-insensitive search
         lookup_headings = {k.lower(): k for k in self.headings}
         for heading in headings:
-            if heading == 'notes' or heading not in lookup_headings:
+            if heading == '_notes' or heading not in lookup_headings:
                 continue
 
-            display = True
             s.append('## ' + lookup_headings[heading])
             s.append(self.headings[lookup_headings[heading]].rstrip())
-            s.append('')
-
-        # No content, but add an empty line for good-looks
-        if not display and force:
             s.append('')
 
         # Append the attributes
@@ -520,18 +622,14 @@ class Zettel:
         s += ['    ' + x for x in str(self.attrs).splitlines()]
         s.append('')
 
-        if display or force:
-            return '\n'.join(s)
-        else:
-            return ''
+        return '\n'.join(s)
 
-    def getRst(self, headings=None, force=False):
+    def getRst(self, headings=None):
         """ Display this zettel in RST format.
 
         Returns:
             An RST string representing the content of this zettel.
         """
-        display = False
 
         headings = headings or []
         headings = headings or self.headings
@@ -542,25 +640,19 @@ class Zettel:
         s.append(' ' + self.title)
         s.append('=' * (len(self.title) + 2))
 
-        if 'notes' in headings:
-            display = True
-            s.append(self.headings['notes'].rstrip())
+        if '_notes' in headings:
+            s.append(self.headings['_notes'].rstrip())
             s.append('')
 
         # case-insensitive search
         lookup_headings = {k.lower(): k for k in self.headings}
         for heading in headings:
-            if heading == 'notes' or heading not in lookup_headings:
+            if heading == '_notes' or heading not in lookup_headings:
                 continue
 
-            display = True
             s.append(lookup_headings[heading])
             s.append('=' * len(lookup_headings[heading]))
             s.append(self.headings[lookup_headings[heading]].rstrip())
-            s.append('')
-
-        # No content, but add an empty line for good-looks
-        if not display and force:
             s.append('')
 
         # Append the attributes
@@ -572,17 +664,4 @@ class Zettel:
         # Will become trailing newline
         s.append('')
 
-        if display or force:
-            return '\n'.join(s)
-        else:
-            return ''
-
-    def __eq__(self, o):
-        """ Returns true if o.title matches this one.
-        """
-        return self.title == o.title
-
-    def __lt__(self, o):
-        """ Returns true if o.title is less than this one.
-        """
-        return self.title < o.title
+        return '\n'.join(s)

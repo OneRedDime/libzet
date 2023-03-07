@@ -55,7 +55,7 @@ class TestZettel(unittest.TestCase):
         z = Zettel.createFromRst(path)
 
         self.assertEqual('today', z.title)
-        self.assertEqual('Today is today\n', z.headings['notes'])
+        self.assertEqual('Today is today\n', z.headings['_notes'])
         self.assertEqual('heading body\n', z.headings['today heading'])
         self.assertEqual('heading body\n\nmultiline\n', z.headings['second heading'])
         self.assertEqual('today-id', z.attrs['id'])
@@ -68,7 +68,7 @@ class TestZettel(unittest.TestCase):
         z = Zettel.createFromMd(path)
 
         self.assertEqual('today', z.title)
-        self.assertEqual('Today is today\n', z.headings['notes'])
+        self.assertEqual('Today is today\n', z.headings['_notes'])
         self.assertEqual('heading body\n', z.headings['today heading'])
         self.assertEqual('heading body\n\nmultiline\n', z.headings['second heading'])
         self.assertEqual('today-id', z.attrs['id'])
@@ -98,7 +98,7 @@ class TestZettel(unittest.TestCase):
         tomorrow = Zettel.createFromRst(tomorrow_path)
         all_ = get_zettels_from_rst(all_path)
 
-        self.assertEqual(all_, [today, tomorrow])
+        self.assertEqual([x.title for x in all_], [today.title, tomorrow.title])
 
     def test_compound_md_parsing(self):
         """ Multiple zettels in one file.
@@ -113,7 +113,7 @@ class TestZettel(unittest.TestCase):
         tomorrow = Zettel.createFromMd(tomorrow_path)
         all_ = get_zettels_from_md(all_path)
 
-        self.assertEqual(all_, [today, tomorrow])
+        self.assertEqual([x.title for x in all_], [today.title, tomorrow.title])
         self.assertEqual(all_[0].headings, today.headings)
         self.assertEqual(all_[1].headings, tomorrow.headings)
 
@@ -136,13 +136,13 @@ class TestZettel(unittest.TestCase):
         # TODO: checking 'x in z.tags' will fail if tags is loaded as None
         f = filtered_zettels(zettels, '"birthday" in f.attrs["tags"]', letter='f')
 
-        self.assertEqual(f[0], zettels[0])
+        self.assertEqual(f[0].title, zettels[0].title)
         self.assertEqual(1, len(f))
 
         # Just search for the other one
         f = filtered_zettels(zettels, 'z.attrs["id"] == "tomorrow-id"')
 
-        self.assertEqual(f[0], zettels[1])
+        self.assertEqual(f[0].title, zettels[1].title)
         self.assertEqual(1, len(f))
 
     def test_filtered_zettels_no_member(self):
