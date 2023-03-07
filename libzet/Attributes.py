@@ -6,12 +6,9 @@ from libzet.NoCompare import NoCompare
 
 
 class Attributes(dict):
-    """ Class to hold a Zettel's attributes.
+    """ Class to hold a Zettel's metadata.
 
-    If a non-existent attribute is queried then a NoCompare is returned.
-
-    This class also allows getting items in the dict via the dot operator.
-    This means keys in this dict must be valid python3 identifiers.
+    If a non-existent key is queried then a NoCompare is returned.
     """
     def __init__(self, *args, **kwargs):
         self.update(*args, **kwargs)
@@ -22,6 +19,7 @@ class Attributes(dict):
 
         Args:
             s: String or filename of yaml to init from.
+
         Raises:
             FileNotFoundError or PermissionError if yaml was a file and
                 couldn't be read.
@@ -37,9 +35,9 @@ class Attributes(dict):
         return Attributes(d)
 
     def toYamlDict(self):
-        """ Reverses SuperDate to easymode yaml str.
+        """ Dump this object as a yaml string.
 
-        Necessary to dump this object as a yaml string.
+        Reverses SuperDate values to easymode yaml str.
 
             yaml.dump(attributes.toYamlDict)
 
@@ -59,14 +57,6 @@ class Attributes(dict):
     def __str__(self):
         return '---\n' + yaml.dump(self.toYamlDict())
 
-    def __getattr__(self, key):
-        """ Expose keys as attributes.
-        """
-        if key in self.__dict__:
-            return self.__dict__[key]
-
-        return self.__getitem__(key)
-
     def __getitem__(self, key):
         try:
             return dict.__getitem__(self, key)
@@ -79,12 +69,6 @@ class Attributes(dict):
         Will also perform special parsing logic for keys that contain
         the word "date".
         """
-        try:
-            if not key.isidentifier():
-                raise ValueError(f'The key "{key}" is not a valid identifier.')
-        except AttributeError as ae:
-            raise ValueError('Keys must be strings')
-
         dtfields = ['event_begin', 'event_end', 'recurring_stop']
         if val and (key in dtfields or 'date' in key):
             val = SuperDate(val)

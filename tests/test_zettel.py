@@ -26,8 +26,8 @@ class TestZettel(unittest.TestCase):
         """
         z = Zettel.createFromRst(f'{resources}/out-of-order.rst')
         z = Zettel.createFromRst(z.getRst())
-        keys = sorted(z.attributes)
-        self.assertEqual(keys, list(z.attributes.keys()))
+        keys = sorted(z.attrs)
+        self.assertEqual(keys, list(z.attrs.keys()))
 
     def test_humanized_date(self):
         """ Values that contain "date" should be parsed.
@@ -36,8 +36,8 @@ class TestZettel(unittest.TestCase):
         exp_date = parse_date('today')
         exp_duedate = parse_date('next wednesday')
 
-        self.assertEqual(exp_date, z.creation_date)
-        self.assertEqual(exp_duedate, z.due_date)
+        self.assertEqual(exp_date, z.attrs['creation_date'])
+        self.assertEqual(exp_duedate, z.attrs['due_date'])
 
     def test_trailing_space(self):
         """ Zettel parsing should trim trailing spaces.
@@ -52,38 +52,38 @@ class TestZettel(unittest.TestCase):
         """ Single rst zettel.
         """
         path = f'{resources}/rst/today.rst'
-        zettel = Zettel.createFromRst(path)
+        z = Zettel.createFromRst(path)
 
-        self.assertEqual('today', zettel.title)
-        self.assertEqual('Today is today\n', zettel.headings['notes'])
-        self.assertEqual('heading body\n', zettel.headings['today heading'])
-        self.assertEqual('heading body\n\nmultiline\n', zettel.headings['second heading'])
-        self.assertEqual('today-id', zettel.attributes['id'])
-        self.assertEqual(['birthday'], zettel.attributes['tags'])
+        self.assertEqual('today', z.title)
+        self.assertEqual('Today is today\n', z.headings['notes'])
+        self.assertEqual('heading body\n', z.headings['today heading'])
+        self.assertEqual('heading body\n\nmultiline\n', z.headings['second heading'])
+        self.assertEqual('today-id', z.attrs['id'])
+        self.assertEqual(['birthday'], z.attrs['tags'])
 
     def test_basic_md_parsing(self):
         """ Single md zettel.
         """
         path = f'{resources}/md/today.md'
-        zettel = Zettel.createFromMd(path)
+        z = Zettel.createFromMd(path)
 
-        self.assertEqual('today', zettel.title)
-        self.assertEqual('Today is today\n', zettel.headings['notes'])
-        self.assertEqual('heading body\n', zettel.headings['today heading'])
-        self.assertEqual('heading body\n\nmultiline\n', zettel.headings['second heading'])
-        self.assertEqual('today-id', zettel.attributes['id'])
-        self.assertEqual(['birthday'], zettel.attributes['tags'])
+        self.assertEqual('today', z.title)
+        self.assertEqual('Today is today\n', z.headings['notes'])
+        self.assertEqual('heading body\n', z.headings['today heading'])
+        self.assertEqual('heading body\n\nmultiline\n', z.headings['second heading'])
+        self.assertEqual('today-id', z.attrs['id'])
+        self.assertEqual(['birthday'], z.attrs['tags'])
 
     def test_md_creation_and_str_back(self):
         """ MD text should be re-created as it was read.
         """
         path = f'{resources}/md/today.md'
-        zettel = Zettel.createFromMd(path)
+        z = Zettel.createFromMd(path)
 
         with open(path) as f:
             exp = f.read()
 
-        self.assertEqual(exp, zettel.getMd())
+        self.assertEqual(exp, z.getMd())
 
     def test_compound_rst_parsing(self):
         """ Multiple zettels in one file.
@@ -134,13 +134,13 @@ class TestZettel(unittest.TestCase):
 
         # search in tags
         # TODO: checking 'x in z.tags' will fail if tags is loaded as None
-        f = filtered_zettels(zettels, '"birthday" in f.tags', letter='f')
+        f = filtered_zettels(zettels, '"birthday" in f.attrs["tags"]', letter='f')
 
         self.assertEqual(f[0], zettels[0])
         self.assertEqual(1, len(f))
 
         # Just search for the other one
-        f = filtered_zettels(zettels, 'z.id == "tomorrow-id"')
+        f = filtered_zettels(zettels, 'z.attrs["id"] == "tomorrow-id"')
 
         self.assertEqual(f[0], zettels[1])
         self.assertEqual(1, len(f))
@@ -153,7 +153,7 @@ class TestZettel(unittest.TestCase):
 
         zettels = get_zettels_from_md(all_path)
 
-        f = filtered_zettels(zettels, '"not_exist" in f', letter='f')
+        f = filtered_zettels(zettels, '"not_exist" in f.attrs', letter='f')
         self.assertEqual([], f)
 
 

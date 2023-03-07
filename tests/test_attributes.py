@@ -19,17 +19,11 @@ class TestAttributes(unittest.TestCase):
         self.assertEqual('hello', a['greeting'])
         self.assertEqual('goodbye', a['farewell'])
 
-    def test_dot_opeartor_get(self):
-        """ Values should be obtainable with a . operator
-        """
-        a = Attributes(test='test')
-        self.assertEqual('test', a.test)
-
     def test_nocompare(self):
         """ Non-existent keys should return NoCompare
         """
         a = Attributes()
-        x = a.test
+        x = a['test']
         self.assertTrue(type(x) is NoCompare)
 
     def test_nocompare_conditional(self):
@@ -38,12 +32,12 @@ class TestAttributes(unittest.TestCase):
         a = Attributes()
         x = 0
 
-        self.assertFalse(a.x == x)
-        self.assertFalse(a.x != x)
-        self.assertFalse(a.x < x)
-        self.assertFalse(a.x > x)
-        self.assertFalse(a.x >= x)
-        self.assertFalse(a.x <= x)
+        self.assertFalse(a['x'] == x)
+        self.assertFalse(a['x'] != x)
+        self.assertFalse(a['x'] < x)
+        self.assertFalse(a['x'] > x)
+        self.assertFalse(a['x'] >= x)
+        self.assertFalse(a['x'] <= x)
 
 
 if __name__ == '__main__':

@@ -203,9 +203,9 @@ class Zettel:
         self.headings = {k: v for k, v in headings.items()}
 
         # Process attributes
-        self.attributes = Attributes()
-        self.attributes.update(attributes)
-        self.attributes.update(kwargs)
+        self.attrs = Attributes()
+        self.attrs.update(attributes)
+        self.attrs.update(kwargs)
 
     def asIcsEvent(self, uid):
         """ Return an icalendar.Event class from this Zettel's data.
@@ -229,7 +229,7 @@ class Zettel:
             None will be returned.
         """
         exp = ['event_begin', 'due_date']
-        if not any([x in self.attributes and self.attributes[x] for x in exp]):
+        if not any([x in self.attrs and self.attrs[x] for x in exp]):
             return None
 
         desc = self.headings['notes'] if 'notes' in self.headings else ''
@@ -436,7 +436,7 @@ class Zettel:
 
         Tags should be sorted.
         """
-        self.attributes['tags'] = sorted(list(set([x for x in self.attributes['tags']])))
+        self.attrs['tags'] = sorted(list(set([x for x in self.attrs['tags']])))
 
     def update(self, new_zettel, exp_headings=None):
         """ Update a zettel.
@@ -463,7 +463,7 @@ class Zettel:
 
         # Update this zettel.
         self.title = new_zettel.title
-        self.attributes = new_zettel.attributes.copy()
+        self.attrs = new_zettel.attributes.copy()
 
         if not exp_headings:
             self.headings = new_zettel.headings
@@ -517,7 +517,7 @@ class Zettel:
 
         # Append the attributes
         s.append('<!--- attributes --->')
-        s += ['    ' + x for x in str(self.attributes).splitlines()]
+        s += ['    ' + x for x in str(self.attrs).splitlines()]
         s.append('')
 
         if display or force:
@@ -567,7 +567,7 @@ class Zettel:
         s.append('.. attributes')
         s.append('::')
         s.append('')
-        s += ['    ' + x for x in str(self.attributes).splitlines()]
+        s += ['    ' + x for x in str(self.attrs).splitlines()]
 
         # Will become trailing newline
         s.append('')
@@ -586,19 +586,3 @@ class Zettel:
         """ Returns true if o.title is less than this one.
         """
         return self.title < o.title
-
-    def __getattr__(self, key):
-        """ Expose keys in self.attributes as attributes.
-        """
-        if key in self.__dict__:
-            return self.__dict__[key]
-
-        return self.attributes[key]
-
-    def __contains__(self, key):
-        """ Return True if key is in the Zettel's dict or attributes.
-        """
-        if key in self.__dict__:
-            return True
-
-        return key in self.attributes
