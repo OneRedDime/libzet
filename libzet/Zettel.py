@@ -574,7 +574,9 @@ class Zettel:
 
         # Update this zettel.
         self.title = new_zettel.title
-        self.attrs = new_zettel.attrs.copy()
+
+        self.attrs = Attributes()
+        self.attrs.update(new_zettel.attrs)
 
         if not exp_headings:
             self.headings = new_zettel.headings
