@@ -7,7 +7,13 @@ else:
 
 __version__ = metadata.version('libzet')
 
-from libzet.Zettel import (
-    load_zettels, save_zettels, SkipZettel, str_to_zettels, Zettel, zettels_to_str)
 
-from libzet.edit import create_zettel, edit_zettels
+# Official functions should be directly importable from libzet.
+from libzet.Attributes import Attributes
+from libzet.Zettel import Zettel
+from libzet.editing import (
+    load_zettels, save_zettels, delete_zettels,
+    create_zettel, edit_zettels,
+    move_zettels, copy_zettels)
+
+from libzet.parsing import str_to_zettels, zettels_to_str

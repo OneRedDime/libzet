@@ -12,11 +12,7 @@ Funniness
 ::
 
     ---
-    assignee: 
-    creation_date: today
-    creator: shillenburg
-    due_date: next wednesday
-    id: PROJ_24
-    project: project
-    stage: todo
-    tags: patrick, spongebob
+    creation_date: 2022-04-19, Tue
+    zlinks: {}
+
+

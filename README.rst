@@ -1,7 +1,7 @@
 ========
  libzet
 ========
-Hello and welcome to libzet, a library for reading data from zettels.
+Hello and welcome to libzet, a library for managing zettels.
 
 Building and installation
 =========================
@@ -30,18 +30,16 @@ upload to pypi.
 
 Usage
 =====
-The libzet library provides functions to parse content and metadata from
-zettel notes. These notes may be in rst or markdown format.
-
-Each note must have a title, followed by the content, and then the metadata
-in yaml format.
-
-It is still in alpha. Many libraries store their metadata at the top of a note
-but I wanted mine at the bottom. I would like to be compatible with each.
+The libzet library provides functions to parse zettels out of Markdown
+or RST text formats and manage these zettels on the filesystem.
 
 Zettel File Format
 ------------------
-Zettels may be stored in markdown or RST format. Here's an example in markdown.
+Zettels may be stored in markdown or RST format. Each must have a title,
+followed by the content, and then the metadata in yaml format. The metadata
+is stored at the bottom because metadata blocks can grow quite large.
+
+Here's an example in markdown.
 
 ::
 
@@ -54,8 +52,8 @@ Zettels may be stored in markdown or RST format. Here's an example in markdown.
 
     <!--- attributes --->
         ---
-        key1: value1
-        key2: value2
+        creation_date: 2023-03-09
+        zlinks: {}
 
 And an example in RST.
 
@@ -74,52 +72,92 @@ And an example in RST.
     ::
 
         ---
-        key1: value1
-        key2: value2
+        creation_date: 2023-03-09
+        zlinks: {}
 
 Zettel Class
 ------------
-Files formatted as above are loaded into Zettel objects.
+Text formatted as above may be parsed into Zettel objects.
 
-- `zettel.title`: Title of the zettel.
-- `zettel.headings`: Dictionary of level-2 headings within the zettel.
-- `zettel.attrs`: Attributes of the Zettel.
+- ``zettel.title``: Title of the zettel.
+- ``zettel.headings``: Dictionary of level-2 headings within the zettel.
+- ``zettel.attrs``: Attributes of the Zettel.
 
-The `attrs` is a special dictionary that will automatically parse date fields
-read in by the Attributes. Any key with the word 'date' in it will be parsed.
-Dates read in this matter may be very free-form. Plain English phrases such as
-"tomorrow" or "next Wednesday" should work fine.
+The ``attrs`` is a dictionary that will automatically parse date fields. Any
+key with the word 'date' in it will be parsed. Dates read in this matter may
+be very free-form. Plain English phrases such as "tomorrow" or
+"next Wednesday" should work fine.
 
-You shouldn't have to worry too much about the methods within the Zettel class;
-Zettels are primarily manipulated by the functions detailed in the next section.
+Parsing and printing
+--------------------
+Zettels can be parsed out of a string with the ``str_to_zettels`` function, and
+then printed using the ``zettels_to_str`` function or the zettel's own
+``getMd()`` or ``getRst()`` methods.
 
-General flow - life of a zettel
--------------------------------
-So how does one go about loading and modifying zettels from the disk? The
-general flow an application should perform is...
+::
 
-- `create_zettel` to create a new zettel on disk.
-- `load_zettels` to load a list of zettels from the disk.
+    def str_to_zettels(text, zettel_format):
+        """ Convert a str to a list of zettels.
+    
+        This function's return may be passed to zettels_to_str.
+    
+        Args:
+            text: Text to convert to zettels.
+            zettel_format: 'rst' or 'md'.
+    
+        Returns:
+            A list of Zettel references.
+    
+        Raises:
+            ValueError if the text was invalid.
+        """
+    
+    
+    def zettels_to_str(zettels, zettel_format, headings=None):
+        """ Return many zettels as a str.
+    
+        This function's return may be passed to str_to_zettels.
+    
+        Args:
+            zettels: List of zettels to print.
+            zettel_format: 'rst' or 'md'.
+            headings: Only print select headings.
+    
+        Returns:
+            A str representing the zettels.
+        """
+
+Filesystem management
+---------------------
+Libzet provides functions to assist with managing zettels on the filesystem.
+
+- Create a new zettel on disk with ``create_zettel``
+- Load a list of zettels from disk with ``load_zettels``
 - Filter this list based on the needs of your application.
-- Send this list to `edit_zettels` to edit them in a text editor.
-- Use `save_zettels` to save the edited zettels back to disk.
+- Modify the zettels and save the changes with ``save_zettels``
+- Or send them to ``edit_zettels`` to edit them in a text editor.
+- Move zettels around using ``copy_zettels`` or ``move_zettels``
+- Remove unwanted zettels with ``delete_zettels``
 
-And you can use the `zettels_to_str` function to print zettels to stdout,
-or the `str_to_zettels` to turn a string into a list of zettels. These
-functions play well together.
+These functions each return valid zettel references with respect to their
+locations on disk. The general idea for an application is to keep track
+of its zettels using the return values of these functions.
 
-Here are the specific docstrings for those methods.
+A zettel's location on disk is tracked with a ``_loadpath`` attribute. These
+functions will automatically manage this attribute, so ensure it is not
+carelessly modified in flight.
 
 ::
     
     def create_zettel(
             path,
             text='', title='', headings=None, attrs=None, zettel_format='md',
-            no_edit=False, errlog='', fun=lambda z: None):
+            no_edit=False, errlog=''):
         """ Create and edit a new zettel.
-
-        All params other than path are optional.
-
+    
+        Pass the return from this function to save_zettels to save the new zettel
+        to disk. All params other than path are optional.
+    
         Args:
             path: Path to create new zettel.
             text: Provide a body of text from which to parse the whole zettel.
@@ -128,116 +166,143 @@ Here are the specific docstrings for those methods.
             zettel_format: 'md' or 'rst'
             errlog: See edit_zettels
             no_edit: Set to True to skip editing.
-            fun: Function which accepts a zettel reference. This function may
-                be used to modify the zettel before editing.
-        
+    
         Returns:
-            A list containing the newly created zettel. Pass it to save_zettels
-            to write to disk.
+            The new zettel reference.
+    
+        Raises:
+            FileExistsError: There was already a zettel at path.
+            ValueError: The newly created zettel was invalid.
         """
-
-
-    def load_zettels(paths, zettel_format, recurse=False, fun=lambda z: None):
+    
+    
+    def load_zettels(paths, zettel_format='md', recurse=False):
         """ Load Zettels from the filesystem.
     
         Zettels will be updated with a _loadpath value in their attrs.
-        This value is useful while zettels are being manipulated in a
-        program because it is guaranteed to be unique (at least within
-        that program).
-    
-        If this list is sent to save_zettels then the _loadpath will
-        not be written.
+        that program). Send these zettels to save_zettels after modifying
+        them to write them to disk. The _loadpath attribute will not be
+        written to disk.
     
         Args:
-            paths: List of directories and exact paths to zettels.
+            paths: Path or list paths to zettels. Each may be a dir or file.
             zettel_format: md or rst
             recurse: True to recurse into subdirs, False otherwise.
-            fun: Call this function on each zettel as it's loaded from disk.
-                Raise SkipZettel from fun to avoid loading a zettel.
     
         Returns:
             A list of zettels.
     
             This list may be passed to save_zettels to write
             them to the filesystem.
+    
+        Raises:
+            OSError if one of the files couldn't be opened.
+            ValueError if one of the zettels contained invalid text.
         """
-
-
-    def edit_zettels(zettels, zettel_format, headings=None, errlog=''):
-        """ Bulk edit existing zettels.
     
-        Assumes the zettels were loaded with Zettel.load_zettels . This
-        function cannot create new zettels.
     
-        If the editing resulted in incorrect zettels and errlog is specified,
-        then this function will write the text to errorlog and print the error.
-        Modify this file and pass it back to this function to retry parsing.
+    def edit_zettels(zettels, zettel_format='md', headings=None, errlog='', delete=False):
+        """ Bulk edit zettels provided by load_zettels.
     
-        Delete the text while editing to avoid updating a zettel.
+        Delete the text for a zettel to avoid updating it.
+    
+        It is possible to add new zettels while editing, just be sure
+        to set the _loadpath attribute for each new zettel.
     
         Args:
             zettels: List of zettels to edit.
             zettel_format: md or rst.
-            headings: Only edit specific headings.
-            errlog: Write zettels to this location if parsing failed.
+            headings: Only edit specific headings for each zettel.
+            errlog: Write your working text to this location if parsing failed.
+            delete: If True, then zettels whose text is deleted during editing will
+                also be deleted from the disk.
     
         Returns:
-            A tuple of dictionaries. In each, the key is the _loadpath
-            and the value is the zettel reference.
-    
-                all_, updated
-    
-            all_ references all zettels.
-            updated maps just the zettels which were updated.
-    
-            The caller may optionally compare these dicts. For example,
-            perhaps to delete zettels from disk which were deleted in edit.
+            A list of zettels that were updated. Deleted zettels will not be
+            in this list.
     
         Raises:
             ValueError if any zettels were edited in an invalid way.
         """
-
-
-    def save_zettels(zettels, zettel_format, fun=lambda z: None):
-        """ Save zettels back to disk.
     
-        The zettels are expected to have a _loadpath key in their attrs.
-        Probably best to send the output from load_zettels to this function.
+    
+    def save_zettels(zettels, zettel_format='md'):
+        """ Save zettels back to disk.
+
+        the _loadpath attribute will not be written.
     
         Args:
             zettels: List of zettels.
             zettel_format: md or rst.
-            fun: A callable that accepts a zettel reference. This will be called
-                on each zettel before it's written back to disk.
-
-                Raise SkipZettel to skip saving a zettel.
-        """
-
-
-    def str_to_zettels(text, zettel_format):
-        """ Convert a str to a list of zettels.
-    
-        The return from this function can be passed to zettels_to_str.
-    
-        Args:
-            text: Text to convert to zettels.
-            zettel_format: 'rst' or 'md'.
     
         Returns:
-            A list of Zettel references.
+            The list of zettels as saved to disk.
+    
+        Raises:
+            KeyError if a zettel is missing a _loadpath attribute. No zettels
+                will be written to disk if this is the case.
+    
+            OSError if a zettel's text couldn't be written to disk.
         """
-
-
-    def zettels_to_str(zettels, zettel_format, headings=None):
-        """ Return many zettels as a str.
-
-        The output from this function can be passed to str_to_zettels.
-
+    
+    
+    def delete_zettels(zettels):
+        """ Delete zettels from the filesystem.
+    
         Args:
-            zettels: List of zettels to print.
-            zettel_format: 'rst' or 'md'.
-            headings: Provide a list of select headings to write.
-
+            zettels: Zettels to delete. Must have a _loadpath attribute.
+    
         Returns:
-            A str representing the zettels
+            An empty list to represent the loss of these zettels
+    
+        Raises:
+            KeyError if any zettels were missing a _loadpath. No zettels
+                will be deleted in this case.
+    
+            OSError if the zettel could not be deleted.
+        """
+    
+    
+    def copy_zettels(zettels, dest, zettel_format='md'):
+        """ Copy zettels to a new file location.
+    
+        Zettels are saved to disk before copying.
+    
+        Args:
+            zettels: List of zettels to copy.
+            zettel_format: md or rst.
+            dest: Location to copy them to.
+    
+        Returns:
+            A list of the new zettels loaded from their new file locations.
+    
+        Raises:
+            KeyError if any zettels were missing a _loadpath. No zettels
+                will be written to disk in this case.
+    
+            OSError if any of the zettels failed to copy.
+    
+            See shutil.copy
+        """
+    
+    
+    def move_zettels(zettels, dest, zettel_format='md'):
+        """ Move zettels.
+    
+            The zettels will be deleted from their former
+            paths, invaliding them with respect to their
+            previous locations. Use this function like...
+    
+                zettels = move_zettels(zettels, './new-dir/')
+    
+        Args:
+            zettels: List of zettels to move.
+            zettel_format: md or rst.
+            dest: Destination directory.
+    
+        Returns:
+            A list of the zettels from their new home.
+    
+        Raises:
+            See copy_zettels and delete_zettels.
         """

@@ -1,6 +1,8 @@
 import os
 import unittest
 
+from superdate import parse_date
+
 from libzet.Attributes import Attributes
 from libzet.NoCompare import NoCompare
 
@@ -38,6 +40,18 @@ class TestAttributes(unittest.TestCase):
         self.assertFalse(a['x'] > x)
         self.assertFalse(a['x'] >= x)
         self.assertFalse(a['x'] <= x)
+
+    def test_humanized_date(self):
+        """ Values that contain "date" should be parsed.
+        """
+        a = Attributes()
+        a['date'] = 'today'
+        a['due_date'] = 'next wednesday'
+        exp_date = parse_date('today')
+        exp_due_date = parse_date('next wednesday')
+
+        self.assertEqual(exp_date, a['date'])
+        self.assertEqual(exp_due_date, a['due_date'])
 
 
 if __name__ == '__main__':
