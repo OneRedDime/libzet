@@ -156,6 +156,7 @@ def load_zettel(path, zettel_format, fun=lambda z: None):
         path: Path to zettel.
         zettel_format: rst or md.
         fun: Call this function on the zettel as it's loaded from disk.
+            Raise SkipZettel from fun to avoid loading a zettel.
 
     Returns:
         A reference to the newly loaded zettel.
@@ -242,6 +243,8 @@ def save_zettels(zettels, zettel_format, fun=lambda z: None):
         zettel_format: md or rst.
         fun: A callable that accepts a zettel reference. This will be called
             on each zettel before it's written back to disk.
+
+            Raise SkipZettel from fun to avoid saving a zettel.
     """
     for z in zettels:
         loadpath = z.attrs['_loadpath']
