@@ -5,7 +5,7 @@ Hello and welcome to libzet, a library for reading data from zettels.
 
 Building and installation
 =========================
-Available from PyPi; Just ``pip3 install superdate``
+Available from PyPi; Just ``pip3 install libzet``
 
 Alternatively, clone this repo and then pip3 install.
 
