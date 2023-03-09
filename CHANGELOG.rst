@@ -6,6 +6,42 @@ All notable changes will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+[2.0.0] - 2023-03-09
+====================
+This release introduces breaking changes to the interface to remove features
+that just weren't worth the brain power. Namely the custom functions and tuple
+dictionary return from ``edit_zettels``. These proved quickly problematic.
+
+Also introduces new functions to manage zettels on the filesystem, and much
+clearer documentation.
+
+Added
+-----
+- Zettels will now all have a creation_date and zlinks attribute.
+- ``edit_zettels`` now has an option to delete zettels if the
+  corresponding text was deleted.
+
+- Functions to copy, delete, and move zettels across the filesystem.
+
+Changed
+-------
+- Reorganization. All filesystem-related functions are in ``editing.py``
+  and parsing-related functions are in ``parsing.py``
+- ``edit_zettels`` and ``create_zettel`` automatically save changes.
+- Rework of unit tests. All tests pass.
+
+Fixed
+-----
+- Sporadic bugfixes from previous release.
+
+Removed
+-------
+- Removed SkipZettel exception and ability to pass custom functions.
+  Confusing to describe; just edit the list yourself. Much easier.
+- Removed "refresh" method from Zettel. Worthless.
+- Removed ``filtered_zettels``. Just filter the list using the
+  built-in python3 ``filter`` function.
+
 [1.0.2-alpha] - 2023-03-08
 ==========================
 Fixed installation instructions in README.
