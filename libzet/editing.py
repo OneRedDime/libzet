@@ -12,10 +12,7 @@ def create_zettel(
         path,
         text='', title='', headings=None, attrs=None, zettel_format='md',
         no_edit=False, errlog=''):
-    """ Create and edit a new zettel.
-
-    Pass the return from this function to save_zettels to save the new zettel
-    to disk. All params other than path are optional.
+    """ Create and new zettel on disk and edit it.
 
     Args:
         path: Path to create new zettel.
@@ -56,9 +53,8 @@ def load_zettels(paths, zettel_format='md', recurse=False):
     """ Load Zettels from the filesystem.
 
     Zettels will be updated with a _loadpath value in their attrs.
-    that program). Send these zettels to save_zettels after modifying
-    them to write them to disk. The _loadpath attribute will not be
-    written to disk.
+    Send these zettels to save_zettels after modifying them to write
+    them to disk. The _loadpath attribute will not be written back to disk.
 
     Args:
         paths: Path or list paths to zettels. Each may be a dir or file.
@@ -279,13 +275,12 @@ def copy_zettels(zettels, dest, zettel_format='md'):
 
 
 def move_zettels(zettels, dest, zettel_format='md'):
-    """ Move zettels.
+    """ Move zettels. Zettels will be saved before moving.
 
-        The zettels will be deleted from their former
-        paths, invaliding them with respect to their
-        previous locations. Use this function like...
+    The zettels will be deleted from their former paths which
+    invalidates their previous _loadpath. Use this function like...
 
-            zettels = move_zettels(zettels, './new-dir/')
+        zettels = move_zettels(zettels, './new-dir/')
 
     Args:
         zettels: List of zettels to move.
