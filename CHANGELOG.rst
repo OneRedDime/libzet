@@ -6,6 +6,21 @@ All notable changes will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+[2.1.0] - 2023-03-13
+====================
+Each component of a zettel is now optional.
+
+Added
+-----
+- Titles are now optional.
+- Empty zettels are now valid.
+
+Fixed
+-----
+- Some parsing bugs addressed with more robust unit tests.
+- Some typos in docstrings and README.
+- Required python version >= 3.7. That's when dicts were ordered by default.
+
 [2.0.0] - 2023-03-09
 ====================
 This release introduces breaking changes to the interface to remove features
