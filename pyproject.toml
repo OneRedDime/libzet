@@ -10,7 +10,7 @@ authors = [
 
 description = 'Python3 library for zettel reading.'
 readme = 'README.rst'
-requires-python = '>=3, <4'
+requires-python = '>=3.7, <4'
 
 dependencies = [
     'icalendar',

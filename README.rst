@@ -80,7 +80,8 @@ Zettel Class
 Text formatted as above may be parsed into Zettel objects.
 
 - ``zettel.title``: Title of the zettel.
-- ``zettel.headings``: Dictionary of level-2 headings within the zettel.
+- ``zettel.headings``: Dictionary of level-2 headings within the zettel. The
+  content immediately under the title is in the ``_notes`` key.
 - ``zettel.attrs``: Attributes of the Zettel.
 
 The ``attrs`` is a dictionary that will automatically parse date fields. Any
