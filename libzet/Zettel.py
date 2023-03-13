@@ -72,8 +72,8 @@ def _is_rst_heading(s):
 
 
 def _is_md_heading(s):
-    s = s.strip()
-    return s.startswith('# ') or s.startswith('## ')
+    s = s.lstrip()
+    return s.startswith('## ')
 
 
 class Zettel:
@@ -205,12 +205,7 @@ class Zettel:
 
         md = md.strip()
         if not md:
-            raise ValueError('No text provided')
-
-        ptr = 0
-
-        title = ''
-        headings = {}
+            return Zettel('', {}, {})
 
         attr_header = '<!--- attributes --->'
         md = md.split(attr_header)
@@ -221,23 +216,22 @@ class Zettel:
         attributes = yaml.safe_load(md[-1].strip())
         md = attr_header.join(md[:-1]).splitlines()
 
-        # Find the headings and content.
-        heading_pts = [x for x, y in enumerate(md) if _is_md_heading(y)]
+        # Scrape the title
+        title = ''
+        if md and md[0].strip().startswith('# '):
+            title = ' '.join(md[0].split()[1:])
+            md = md[1:]
 
-        # Find the title.
-        if not heading_pts:
-            raise ValueError('No title in zettel.')
+        # Find the content under title and headings.
+        heading_pts = [x for x, y in enumerate(md) if _is_md_heading(y)] + [len(md)]
 
-        heading_pts.append(len(md))
+        headings = {}
+        headings['_notes'] = '\n'.join(md[:heading_pts[0]])
+        if not headings['_notes']:
+            del(headings['_notes'])
 
-        title = ' '.join(md[heading_pts[0]].split()[1:])
-
-        # Gather _notes
-        headings['_notes'] = '\n'.join(md[1:heading_pts[1]])
-
-        # Get the rest
-        for ptr in range(1, len(heading_pts) - 1):
-            heading = ''.join(md[heading_pts[ptr]].split('##')[1:]).strip()
+        for ptr in range(len(heading_pts) - 1):
+            heading = ''.join(md[heading_pts[ptr]].split('## ')[1:]).strip()
             content_start = heading_pts[ptr] + 1
             content_end = heading_pts[ptr + 1]
             headings[heading] = '\n'.join(md[content_start:content_end])
@@ -284,12 +278,7 @@ class Zettel:
 
         rst = rst.strip()
         if not rst:
-            raise ValueError('No text provided')
-
-        ptr = 0
-
-        title = ''
-        headings = {}
+            return Zettel('', {}, {})
 
         # Split out the attributes and content.
         attr_header = '.. attributes\n::'
@@ -301,25 +290,22 @@ class Zettel:
         rst = attr_header.join(rst[:-1]).splitlines()
 
         # Strip the first line of === if it exists.
-        if _is_rst_heading(rst[0]):
-            rst = rst[1:]
+        title = ''
+        if len(rst) >= 3 and _is_rst_heading(rst[0]) and _is_rst_heading(rst[2]):
+            title = rst[1].strip()
+            rst = rst[3:]
 
         # Find the lines in the text that are heading markers.
-        heading_pts = [x - 1 for x, y in enumerate(rst) if _is_rst_heading(y)]
+        heading_pts = [x - 1 for x, y in enumerate(rst) if _is_rst_heading(y)] + [len(rst)]
 
-        # First heading marker is the title.
-        if not heading_pts or heading_pts[0] == -1:
-            raise ValueError('No title in zettel.')
-
-        heading_pts.append(len(rst))
-
-        title = rst[heading_pts[0]].strip()
-
-        # Gather _notes
-        headings['_notes'] = '\n'.join(rst[heading_pts[0] + 2:heading_pts[1]])
+        # Gather content under title
+        headings = {}
+        headings['_notes'] = '\n'.join(rst[:heading_pts[0]])
+        if not headings['_notes']:
+            del(headings['_notes'])
 
         # Get the rest
-        for ptr in range(1, len(heading_pts) - 1):
+        for ptr in range(len(heading_pts) - 1):
             heading = rst[heading_pts[ptr]]
             content_start = heading_pts[ptr] + 2
             content_end = heading_pts[ptr + 1]
@@ -376,11 +362,11 @@ class Zettel:
         headings = [x.lower() for x in headings]
 
         s = []
-        s.append('# ' + self.title)
+        if self.title:
+            s.append('# ' + self.title)
 
-        if '_notes' in headings:
-            s.append(self.headings['_notes'].rstrip())
-            s.append('')
+        if '_notes' in headings and self.headings['_notes']:
+            s.append(self.headings['_notes'])
 
         # case-insensitive search
         lookup_headings = {k.lower(): k for k in self.headings}
@@ -389,7 +375,7 @@ class Zettel:
                 continue
 
             s.append('## ' + lookup_headings[heading])
-            s.append(self.headings[lookup_headings[heading]].rstrip())
+            s.append(self.headings[lookup_headings[heading]])
             s.append('')
 
         # Append the attributes
@@ -415,13 +401,13 @@ class Zettel:
         headings = [x.lower() for x in headings]
 
         s = []
-        s.append('=' * (len(self.title) + 2))
-        s.append(' ' + self.title)
-        s.append('=' * (len(self.title) + 2))
+        if self.title:
+            s.append('=' * (len(self.title) + 2))
+            s.append(' ' + self.title)
+            s.append('=' * (len(self.title) + 2))
 
         if '_notes' in headings:
-            s.append(self.headings['_notes'].rstrip())
-            s.append('')
+            s.append(self.headings['_notes'])
 
         # case-insensitive search
         lookup_headings = {k.lower(): k for k in self.headings}
@@ -431,8 +417,7 @@ class Zettel:
 
             s.append(lookup_headings[heading])
             s.append('=' * len(lookup_headings[heading]))
-            s.append(self.headings[lookup_headings[heading]].rstrip())
-            s.append('')
+            s.append(self.headings[lookup_headings[heading]])
 
         # Append the attributes
         s.append('.. attributes')

@@ -35,9 +35,9 @@ or RST text formats and manage these zettels on the filesystem.
 
 Zettel File Format
 ------------------
-Zettels may be stored in markdown or RST format. Each must have a title,
-followed by the content, and then the metadata in yaml format. The metadata
-is stored at the bottom because metadata blocks can grow quite large.
+Zettels may be stored in markdown or RST format. Each may have a title,
+content, and metadata in yaml format. The metadata is stored at the bottom
+because metadata blocks can grow quite large.
 
 Here's an example in markdown.
 

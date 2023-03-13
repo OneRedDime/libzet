@@ -41,7 +41,7 @@ class TestFileOperations(unittest.TestCase):
         z = load_zettels(resources, 'md')
         self.assertEqual(1, len(z))
         self.assertEqual('my title', z[0].title)
-        self.assertEqual('text\n', z[0].headings['_notes'])
+        self.assertEqual('text', z[0].headings['_notes'])
         self.assertEqual(f'{resources}/basic.md', z[0].attrs['_loadpath'])
 
     def test_save_zettels(self):

@@ -1,9 +1,10 @@
 import os
 import unittest
+from datetime import datetime
 
 from superdate import parse_date
 
-from libzet import Zettel
+from libzet import Attributes, Zettel
 from libzet.parsing import get_zettels_from_md, get_zettels_from_rst
 
 
@@ -21,6 +22,8 @@ class TestZettel(unittest.TestCase):
         z = Zettel.createFromRst(exp)
 
         self.assertEqual(exp, z.getRst())
+        self.assertIs(Attributes, type(z.attrs))
+        self.assertTrue(z.attrs['creation_date'] == datetime(2022, 4, 19))
 
     def test_md_creation_and_str_back(self):
         """ Basic MD creation.
@@ -32,6 +35,8 @@ class TestZettel(unittest.TestCase):
             exp = f.read()
 
         self.assertEqual(exp, z.getMd())
+        self.assertIs(Attributes, type(z.attrs))
+        self.assertTrue(z.attrs['creation_date'] == datetime(2022, 4, 19))
 
     def test_alphabetized_attributes(self):
         """ Zettels should alphabetize attributes when printing.
