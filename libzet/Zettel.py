@@ -336,7 +336,11 @@ class Zettel:
         # Update this zettel.
         self.title = new_zettel.title
 
+        orig_creation_date = self.attrs['creation_date']
+
+        self.attrs = Attributes()
         self.attrs.update(new_zettel.attrs)
+        self.attrs['creation_date'] = orig_creation_date
 
         if not exp_headings:
             self.headings = new_zettel.headings
